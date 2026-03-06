@@ -138,11 +138,10 @@ def handle_process_audio():
     # 5. Distress Detection
     analysis = analyze_speech(text)
     
-    # Check if we should trigger an emergency based on the score levels
-    # Levels 2 (Danger) and 3 (Emergency) trigger automated notifications
-    if analysis.get('level', 0) >= 2:
+    # Check if we should trigger an emergency based on alert_status
+    if analysis.get('alert_status') == "EMERGENCY":
         log_analytic('distress_alerts')
-        log_alert(f'Voice Level {analysis["level"]}', ', '.join(analysis['triggers']), analysis['danger_score'])
+        log_alert('Voice EMERGENCY', ', '.join(analysis.get('triggers', ['Speech Trigger'])), analysis.get('danger_score', 100))
         
         # Extract location if sent along with the form
         location_data = None
@@ -150,21 +149,24 @@ def handle_process_audio():
             location_data = {'lat': request.form['lat'], 'lng': request.form['lng']}
             log_location(location_data['lat'], location_data['lng'])
             
-        trigger_emergency_response(analysis['danger_score'], analysis['triggers'], location_data)
+        trigger_emergency_response(analysis.get('danger_score', 100), analysis.get('triggers', ['Speech Trigger']), location_data)
     else:
         log_analytic('normal_interactions')
 
-    # Combine response
+    # Combine response for frontend and required JSON structure
+    # The return format MUST be: {"threat_score": value, "detected_text": text, "alert_status": "NORMAL" or "EMERGENCY"}
+    # We add extra fields for dashboard UI compatibility
+    
     response_data = analysis.copy()
-    response_data['text'] = text
-    if analysis['status'] == "Safe":
+    response_data['status'] = "Emergency" if analysis['alert_status'] == "EMERGENCY" else "Safe"
+    
+    if response_data['status'] == "Safe":
         response_data['message'] = "No emergency detected."
-    elif analysis['status'] == "Emergency":
-        response_data['message'] = "Emergency protocol activated."
     else:
-        response_data['message'] = "Warning: Distress keywords detected."
+        response_data['message'] = "Emergency protocol activated."
 
     return jsonify(response_data), 200
+
 
 @app.route('/trigger_emergency', methods=['POST'])
 def handle_emergency():
