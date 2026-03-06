@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: ai-voice-guardian
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.5
+      - key: ALERT_EMAIL_USER
+        sync: false
+      - key: ALERT_EMAIL_PASS
+        sync: false
