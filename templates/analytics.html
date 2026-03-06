@@ -1,0 +1,200 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<header>
+    <div class="header-titles">
+        <h1>Analytics Overview</h1>
+        <p>System usage and threat detection metrics</p>
+    </div>
+    <button onclick="fetchStats()" class="primary-btn"
+        style="background-color: var(--surface-color); border: 1px solid var(--border-color); color: var(--text-primary);">
+        <i class="fa-solid fa-rotate-right"></i> Refresh
+    </button>
+</header>
+
+<div class="status-grid" style="grid-template-columns: repeat(4, 1fr) !important; margin-bottom: 2rem;">
+    <div class="card">
+        <p class="status-desc">Total Voice Interactions</p>
+        <h2 id="stat-total-hits" style="font-size: 2rem; color: var(--accent-color);">0</h2>
+    </div>
+    <div class="card">
+        <p class="status-desc">Total Emergency Alerts</p>
+        <h2 id="stat-total-alerts" style="font-size: 2rem; color: var(--danger-color);">0</h2>
+    </div>
+    <div class="card">
+        <p class="status-desc">Last Alert Time</p>
+        <h2 id="stat-last-time"
+            style="font-size: 1.1rem; color: var(--danger-color); height: 48px; display: flex; align-items: center;">N/A
+        </h2>
+    </div>
+    <div class="card">
+        <p class="status-desc">System Listening Status</p>
+        <h2 id="stat-system-status" style="font-size: 1.5rem; color: var(--safe-color);">ACTIVE</h2>
+    </div>
+</div>
+
+<div class="status-grid" style="grid-template-columns: 1fr 1fr !important;">
+    <div class="card">
+        <div class="card-header">
+            <h3>Incident Categories</h3>
+        </div>
+        <div class="card-content" style="height: 300px; display: flex; justify-content: center;">
+            <canvas id="pieChart"></canvas>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3>Time-based Incident Trends</h3>
+        </div>
+        <div class="card-content" style="height: 300px; display: flex; justify-content: center;">
+            <canvas id="lineChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="status-grid" style="grid-template-columns: 1fr 1fr !important; margin-top: 2rem;">
+    <div class="card">
+        <div class="card-header">
+            <h3>Most Reported Unsafe Areas</h3>
+            <i class="fa-solid fa-map-location-dot"></i>
+        </div>
+        <div class="card-content">
+            <ul id="unsafe-areas-list" style="list-style: none; padding: 0; color: white;">
+                <li><span class="status-desc">Loading...</span></li>
+            </ul>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header">
+            <h3>Notification Alerts Log</h3>
+            <i class="fa-solid fa-paper-plane"></i>
+        </div>
+        <div class="card-content">
+            <ul id="notification-logs-list" style="list-style: none; padding: 0; color: white; font-size: 0.8rem;">
+                <li><span class="status-desc">No logs found.</span></li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let lineChartInstance = null;
+    let pieChartInstance = null;
+
+    async function fetchStats() {
+        try {
+            const res = await fetch('/api/stats');
+            const data = await res.json();
+
+            // Map the stats
+            document.getElementById('stat-total-hits').textContent = data.total_interactions || 0;
+            document.getElementById('stat-total-alerts').textContent = data.distress_alerts || 0;
+            document.getElementById('stat-last-time').textContent = data.last_alert_time || 'No alerts yet';
+
+            // Heuristic for listening status: if the app is reachable, it's monitoring
+            document.getElementById('stat-system-status').textContent = 'ACTIVE';
+            document.getElementById('stat-system-status').style.color = 'var(--safe-color)';
+
+            updateCharts(data);
+            updateLocationsList(data.incidents || []);
+            updateNotificationList(data.notification_logs || []);
+        } catch (e) { console.error('Error fetching stats:', e); }
+    }
+
+    function updateLocationsList(incidents) {
+        const list = document.getElementById('unsafe-areas-list');
+        list.innerHTML = '';
+        if (incidents.length === 0) {
+            list.innerHTML = '<li><span class="status-desc">No reported areas yet.</span></li>';
+            return;
+        }
+
+        let areaFreq = {};
+        incidents.forEach(inc => {
+            if (inc.location !== 'Unknown') {
+                let key = inc.location;
+                if (inc.location.includes(',')) {
+                    const parts = inc.location.split(',').map(n => {
+                        const val = parseFloat(n);
+                        return isNaN(val) ? n : val.toFixed(3);
+                    });
+                    key = parts.join(', ');
+                }
+                areaFreq[key] = (areaFreq[key] || 0) + 1;
+            }
+        });
+
+        Object.keys(areaFreq).slice(0, 5).forEach(loc => {
+            list.innerHTML += `<li style="padding: 0.5rem 0; border-bottom: 1px solid var(--border-color);"><i class="fa-solid fa-location-crosshairs danger-text"></i> ${loc} <span class="badge" style="float:right;">${areaFreq[loc]} reports</span></li>`;
+        });
+    }
+
+    function updateNotificationList(logs) {
+        const list = document.getElementById('notification-logs-list');
+        list.innerHTML = '';
+        if (logs.length === 0) {
+            list.innerHTML = '<li><span class="status-desc">No notifications sent yet.</span></li>';
+            return;
+        }
+
+        logs.forEach(log => {
+            list.innerHTML += `<li style="padding: 0.4rem 0; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;">
+                <span><i class="fa-solid fa-envelope"></i> ${log.contact_email}</span>
+                <span style="opacity: 0.7;">${log.status}</span>
+            </li>`;
+        });
+    }
+
+    function updateCharts(data) {
+        const pieCtx = document.getElementById('pieChart').getContext('2d');
+        const lineCtx = document.getElementById('lineChart').getContext('2d');
+
+        if (pieChartInstance) pieChartInstance.destroy();
+        if (lineChartInstance) lineChartInstance.destroy();
+
+        const catFreq = { 'General': 0, 'Harassment': 0, 'Stalking': 0, 'Physical Threat': 0 };
+        const timeFrames = {};
+
+        (data.incidents || []).forEach(inc => {
+            if (catFreq[inc.category] !== undefined) catFreq[inc.category]++;
+            const date = new Date(inc.timestamp).toLocaleDateString();
+            timeFrames[date] = (timeFrames[date] || 0) + 1;
+        });
+
+        pieChartInstance = new Chart(pieCtx, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(catFreq),
+                datasets: [{
+                    data: Object.values(catFreq),
+                    backgroundColor: ['#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444'],
+                    borderWidth: 0
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#f8fafc' } } } }
+        });
+
+        lineChartInstance = new Chart(lineCtx, {
+            type: 'line',
+            data: {
+                labels: Object.keys(timeFrames).length ? Object.keys(timeFrames) : ['No Data'],
+                datasets: [{
+                    label: 'Daily Incidents',
+                    data: Object.keys(timeFrames).length ? Object.values(timeFrames) : [0],
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: '#94a3b8' } }, x: { ticks: { color: '#94a3b8' } } } }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', fetchStats);
+</script>
+{% endblock %}

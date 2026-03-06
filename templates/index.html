@@ -1,0 +1,203 @@
+{% extends "layout.html" %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+{% endblock %}
+
+{% block content %}
+<header>
+    <div class="header-titles">
+        <h1>Dashboard Overview</h1>
+        <p>Monitoring active sessions and environment</p>
+    </div>
+    <!-- Button to trigger voice recording manually for testing -->
+    <div style="display: flex; gap: 1rem;">
+        <button id="toggle-listening-btn" class="primary-btn">
+            <i class="fa-solid fa-microphone"></i> <span id="btn-text">Start Assistant</span>
+        </button>
+        <button id="sos-btn" class="primary-btn"
+            style="background-color: var(--danger-color); border-color: var(--danger-color);">
+            <i class="fa-solid fa-bell"></i> <span>SOS</span>
+        </button>
+    </div>
+</header>
+
+<div class="status-grid">
+    <!-- Status Card -->
+    <div class="card status-card">
+        <div class="card-header">
+            <h3>System Status</h3>
+            <div id="status-indicator" class="pulse-indicator safe"></div>
+        </div>
+        <div class="card-content">
+            <div class="status-value-group">
+                <span id="safety-status-text" class="status-text safe-text">Secure</span>
+            </div>
+            <p class="status-desc">Environment monitoring is active.</p>
+
+            <div id="gender-status" class="gender-badge hidden">
+                <i class="fa-solid fa-venus"></i>
+                <span id="gender-text">Detecting...</span>
+            </div>
+
+            <div id="recording-status" class="hidden">
+                <i class="fa-solid fa-record-vinyl fa-spin custom-spin"></i> Recording audio...
+            </div>
+        </div>
+    </div>
+
+    <!-- Score Card -->
+    <div class="card score-card">
+        <div class="card-header">
+            <h3>Threat Level</h3>
+            <i class="fa-solid fa-gauge-high"></i>
+        </div>
+        <div class="card-content">
+            <div class="score-display">
+                <span id="danger-score">0</span>
+                <span class="score-max">/100</span>
+            </div>
+            <div class="progress-bar-container">
+                <div id="score-progress" class="progress-bar safe-bg" style="width: 0%;"></div>
+            </div>
+            <p class="status-desc" id="triggers-display">No threats detected.</p>
+        </div>
+    </div>
+
+    <!-- Live Transcript Card -->
+    <div class="card transcript-card">
+        <div class="card-header">
+            <h3>Live Transcript Log</h3>
+            <i class="fa-solid fa-file-waveform"></i>
+        </div>
+        <div class="card-content transcript-content" id="transcript-container">
+            <p class="placeholder-text">Waiting for input...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Map View Section -->
+<div class="map-section">
+    <div class="card map-card">
+        <div class="card-header">
+            <h3>Location Tracking</h3>
+            <span id="location-status" class="badge">Inactive</span>
+        </div>
+        <div class="card-content">
+            <div id="map" class="map-container">
+                <div class="map-overlay" id="map-overlay">
+                    <p>Location sharing is only active during emergency.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Incident Report Section -->
+<div class="map-section" style="margin-top: 1.5rem;">
+    <div class="card map-card">
+        <div class="card-header">
+            <h3>Report Incident</h3>
+            <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <div class="card-content" style="display: flex; flex-direction: column; gap: 1.5rem;">
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <label style="font-weight: 600; font-size: 0.9rem;">Category of Danger</label>
+                <select id="incident-category"
+                    style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background-color: rgba(0,0,0,0.2); color: white; font-family: inherit;">
+                    <option value="General">General Suspicious Activity</option>
+                    <option value="Harassment">Harassment</option>
+                    <option value="Stalking">Stalking</option>
+                    <option value="Physical Threat">Physical Threat</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <label style="font-weight: 600; font-size: 0.9rem;">Description</label>
+                <textarea id="incident-description" rows="3" placeholder="Describe what happened..."
+                    style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background-color: rgba(0,0,0,0.2); color: white; font-family: inherit;"></textarea>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <p class="status-desc" style="margin: 0;">
+                    <i class="fa-solid fa-location-dot"></i> <span id="incident-loc-status">Location will be attached
+                        automatically.</span>
+                </p>
+                <button onclick="submitIncidentReport()" id="submit-incident-btn" class="primary-btn"
+                    style="width: fit-content;">
+                    <i class="fa-solid fa-paper-plane"></i> Submit Report
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Emergency Banner -->
+<div id="emergency-banner" class="emergency-banner hidden">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <div class="banner-text">
+        <strong>EMERGENCY PROTOCOL ACTIVATED</strong>
+        <span>Location and audio are being securely transmitted to emergency contacts.</span>
+    </div>
+</div>
+
+<!-- Push Notification Container -->
+<div id="push-notification" class="emergency-banner hidden"
+    style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 99999; width: auto; max-width: 90%; background-color: var(--danger-color); box-shadow: 0 0 30px rgba(239, 68, 68, 0.6); animation: slide-down 0.4s ease-out;">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <div class="banner-text">
+        <strong id="push-title">Danger Detected</strong>
+        <span id="push-message">⚠️ Possible danger detected. Alert has been sent.</span>
+    </div>
+</div>
+
+<!-- Awareness & Instruction Modal (Automatically Opens) -->
+<div id="awareness-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 800px; padding: 4rem;">
+        <i class="fa-solid fa-shield-heart pulse-red"
+            style="font-size: 5rem; color: var(--accent-color); margin-bottom: 2rem;"></i>
+        <h1 style="font-size: 3rem; margin-bottom: 1.5rem;">Women's Safety Awareness</h1>
+
+        <div
+            style="background: rgba(239, 68, 68, 0.1); border-radius: 16px; padding: 2rem; margin-bottom: 2rem; text-align: left;">
+            <h3 style="color: var(--accent-color); margin-bottom: 1rem;">Empowerment & Safety Message</h3>
+            <p style="font-size: 1.1rem; line-height: 1.6; color: var(--text-primary); font-style: italic;">
+                "Your safety is your right, and your voice is your power. We are here to ensure that no woman ever feels
+                alone in a moment of distress."
+            </p>
+        </div>
+
+        <div style="text-align: left; margin-bottom: 2.5rem;">
+            <h3 style="color: var(--accent-color); margin-bottom: 1.5rem;">Safety Instructions:</h3>
+            <ul class="awareness-tips" style="font-size: 1.1rem;">
+                <li><i class="fa-solid fa-microphone-lines"></i> <strong>Passive Security:</strong> Once activated, the
+                    system monitors speech automatically.</li>
+                <li><i class="fa-solid fa-brain"></i> <strong>Intelligence levels:</strong> The system identifies
+                    'Safe', 'Suspicious', 'Danger', and 'Emergency' states.</li>
+                <li><i class="fa-solid fa-bolt"></i> <strong>Instant Alert:</strong> Levels 2 and 3 trigger immediate
+                    siren sounds and email notifications.</li>
+            </ul>
+        </div>
+
+        <button onclick="dismissAwareness()" class="primary-btn"
+            style="width: 100%; font-size: 1.5rem; padding: 1.5rem; border-radius: 16px;">
+            Start Safety Guardian <i class="fa-solid fa-shield-check"></i>
+        </button>
+    </div>
+</div>
+
+<script>
+    function dismissAwareness() {
+        document.getElementById('awareness-modal').style.display = 'none';
+        if (typeof startContinuousRecording === 'function') {
+            startContinuousRecording();
+        }
+    }
+</script>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title|default("Voice Guardian") }}</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Optional: Leaflet for Index -->
+    {% block extra_head %}{% endblock %}
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="logo">
+                <i class="fa-solid fa-shield-halved"></i>
+                <span>CoreAI</span>
+            </div>
+            <ul class="nav-links">
+                <li class="{% if request.endpoint == 'index' %}active{% endif %}">
+                    <a href="{{ url_for('index') }}"><i class="fa-solid fa-house"></i> Home</a>
+                </li>
+                <li class="{% if request.endpoint == 'analytics' %}active{% endif %}">
+                    <a href="{{ url_for('analytics') }}"><i class="fa-solid fa-chart-line"></i> Analytics</a>
+                </li>
+                <li class="{% if request.endpoint == 'settings' %}active{% endif %}">
+                    <a href="{{ url_for('settings') }}"><i class="fa-solid fa-gear"></i> Settings</a>
+                </li>
+                <li class="{% if request.endpoint == 'profile' %}active{% endif %}">
+                    <a href="{{ url_for('profile') }}"><i class="fa-solid fa-circle-user"></i> Profile</a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="dashboard">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Base Scripts -->
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>

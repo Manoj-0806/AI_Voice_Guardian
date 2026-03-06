@@ -1,0 +1,142 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<header>
+    <div class="header-titles">
+        <h1>User Profile</h1>
+        <p>Manage your identity and emergency contacts</p>
+    </div>
+    <div id="save-status" class="badge" style="display:none; background-color: var(--safe-color); color: white;">Saved
+        successfully</div>
+</header>
+
+<div class="status-grid" style="grid-template-columns: 1fr 1fr;">
+    <!-- Personal Details -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Personal Information</h3>
+            <i class="fa-solid fa-user"></i>
+        </div>
+        <div class="card-content" style="display: flex; flex-direction: column; gap: 1.5rem;">
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <label style="font-weight: 600; font-size: 0.9rem;">Full Name</label>
+                <input type="text" id="name"
+                    style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background-color: rgba(0,0,0,0.2); color: white;">
+            </div>
+
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <label style="font-weight: 600; font-size: 0.9rem;">Phone Number</label>
+                <input type="text" id="phone"
+                    style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background-color: rgba(0,0,0,0.2); color: white;">
+            </div>
+
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <label style="font-weight: 600; font-size: 0.9rem;">Email Address</label>
+                <input type="email" id="email"
+                    style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background-color: rgba(0,0,0,0.2); color: white;">
+            </div>
+
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <label style="font-weight: 600; font-size: 0.9rem;">Medical Info / Allergies</label>
+                <textarea id="medical" rows="2"
+                    style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background-color: rgba(0,0,0,0.2); color: white;"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- Emergency Contact -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Emergency Contact</h3>
+            <i class="fa-solid fa-address-book"></i>
+        </div>
+        <div class="card-content" style="display: flex; flex-direction: column; gap: 1.5rem;">
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <label style="font-weight: 600; font-size: 0.9rem;">Contact Name</label>
+                <input type="text" id="em-name"
+                    style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background-color: rgba(0,0,0,0.2); color: white;">
+            </div>
+
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <label style="font-weight: 600; font-size: 0.9rem;">Contact Phone</label>
+                <input type="text" id="em-phone"
+                    style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background-color: rgba(0,0,0,0.2); color: white;">
+            </div>
+
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <label style="font-weight: 600; font-size: 0.9rem;">Contact Emergency Email</label>
+                <input type="email" id="em-email" placeholder="For automated alerts"
+                    style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background-color: rgba(0,0,0,0.2); color: white;">
+            </div>
+
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <label style="font-weight: 600; font-size: 0.9rem;">Update Security PIN / Password</label>
+                <input type="password" id="password" placeholder="Leave blank to keep current"
+                    style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background-color: rgba(0,0,0,0.2); color: white;">
+            </div>
+
+            <p class="status-desc" style="margin-top: 1rem;">
+                <i class="fa-solid fa-info-circle"></i> This contact will receive an automated alert containing your
+                location and audio feed when a distress signal is verified.
+            </p>
+
+            <button onclick="saveProfile()" class="primary-btn" style="width: fit-content; margin-top: auto;">
+                <i class="fa-solid fa-floppy-disk"></i> Save Profile
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function loadProfile() {
+        try {
+            const res = await fetch('/api/profile');
+            const data = await res.json();
+
+            document.getElementById('name').value = data.name || '';
+            document.getElementById('phone').value = data.phone || '';
+            document.getElementById('email').value = data.email || '';
+            document.getElementById('medical').value = data.medical_info || '';
+            document.getElementById('em-name').value = data.emergency_contact_name || '';
+            document.getElementById('em-phone').value = data.emergency_contact_phone || '';
+            document.getElementById('em-email').value = data.emergency_contact_email || '';
+        } catch (e) { console.error('Error loading profile', e); }
+    }
+
+    async function saveProfile() {
+        const btn = document.querySelector('.primary-btn');
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+
+        const payload = {
+            name: document.getElementById('name').value,
+            phone: document.getElementById('phone').value,
+            email: document.getElementById('email').value,
+            medical_info: document.getElementById('medical').value,
+            emergency_contact_name: document.getElementById('em-name').value,
+            emergency_contact_phone: document.getElementById('em-phone').value,
+            emergency_contact_email: document.getElementById('em-email').value,
+            password: document.getElementById('password').value
+        };
+
+        try {
+            await fetch('/api/profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const badge = document.getElementById('save-status');
+            badge.style.display = 'inline-block';
+            setTimeout(() => badge.style.display = 'none', 3000);
+
+        } catch (e) { console.error('Error saving profile', e); }
+        finally {
+            btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Profile';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadProfile);
+</script>
+{% endblock %}

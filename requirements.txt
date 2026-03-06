@@ -1,0 +1,8 @@
+Flask==3.0.3
+vaderSentiment==3.3.2
+soundfile==0.12.1
+numpy==1.26.4
+pydub==0.25.1
+SpeechRecognition==3.10.4
+scipy==1.13.1
+

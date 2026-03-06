@@ -1,0 +1,87 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<header>
+    <div class="header-titles">
+        <h1>Detection Settings</h1>
+        <p>Configure keywords and system sensitivity</p>
+    </div>
+    <div id="save-status" class="badge" style="display:none; background-color: var(--safe-color); color: white;">Saved
+        successfully</div>
+</header>
+
+<div class="card" style="max-width: 800px;">
+    <div class="card-content" style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+        <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <label style="font-weight: 600; font-size: 0.9rem;">Trigger Keywords (comma separated)</label>
+            <textarea id="keywords" rows="3"
+                style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background-color: rgba(0,0,0,0.2); color: white; font-family: inherit;"></textarea>
+            <small class="status-desc">Standard words that increase danger score.</small>
+        </div>
+
+        <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <label style="font-weight: 600; font-size: 0.9rem;">Secret Phrases (comma separated)</label>
+            <textarea id="secret-phrases" rows="3"
+                style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background-color: rgba(0,0,0,0.2); color: white; font-family: inherit;"></textarea>
+            <small class="status-desc">Phrases that immediately trigger an emergency.</small>
+        </div>
+
+        <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <label style="font-weight: 600; font-size: 0.9rem;">Detection Sensitivity</label>
+            <select id="sensitivity"
+                style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background-color: rgba(0,0,0,0.2); color: white; font-family: inherit;">
+                <option value="high">High (Triggers easily)</option>
+                <option value="medium">Medium (Balanced)</option>
+                <option value="low">Low (Requires strong signals)</option>
+            </select>
+        </div>
+
+        <button onclick="saveSettings()" class="primary-btn" style="width: fit-content; margin-top: 1rem;">
+            <i class="fa-solid fa-floppy-disk"></i> Save Settings
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function loadSettings() {
+        try {
+            const res = await fetch('/api/settings');
+            const data = await res.json();
+
+            document.getElementById('keywords').value = data.keywords.join(', ');
+            document.getElementById('secret-phrases').value = data.secret_phrases.join(', ');
+            document.getElementById('sensitivity').value = data.sensitivity;
+        } catch (e) { console.error('Error loading settings', e); }
+    }
+
+    async function saveSettings() {
+        const btn = document.querySelector('.primary-btn');
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+
+        const keywords = document.getElementById('keywords').value.split(',').map(s => s.trim()).filter(s => s);
+        const secret_phrases = document.getElementById('secret-phrases').value.split(',').map(s => s.trim()).filter(s => s);
+        const sensitivity = document.getElementById('sensitivity').value;
+
+        try {
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ keywords, secret_phrases, sensitivity })
+            });
+
+            const badge = document.getElementById('save-status');
+            badge.style.display = 'inline-block';
+            setTimeout(() => badge.style.display = 'none', 3000);
+
+        } catch (e) { console.error('Error saving settings', e); }
+        finally {
+            btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Settings';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadSettings);
+</script>
+{% endblock %}
